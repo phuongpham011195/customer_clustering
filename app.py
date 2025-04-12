@@ -38,7 +38,7 @@ st.sidebar.markdown(
 with st.sidebar:
     page = option_menu(
         menu_title="Go to",  
-        options=["Project Overview", "KMeans Model", "Manual Rule Based"],
+        options=["Project Overview", "Manual Rule Based", "KMeans Model"],
         icons=["house", "bar-chart", "gear"],  
         default_index=0,
         styles={
@@ -80,15 +80,19 @@ if page == "Project Overview":
     st.subheader("4. Đánh giá và lựa chọn thuật toán:")
     st.markdown("""
     **Sau khi phân tích và đánh giá dựa trên thời gian mà model xử lý và Silhouette Score, ta quyết định lựa chọn 2 phương pháp sau để giải quyết bài toán phân cụm khách hàng:**
-    ** 1. Phân cụm bằng tập luật: Thời gian xử lý nhanh, phân cụm rõ ràng: Phân thành 8 nhóm khách hàng, phù hợp cho các chương trình khuyến mãi, các chiến lược kinh doanh có tính cá nhân hóa cao
+    """)
+
+    st.markdown("""
+    **Phân cụm bằng tập luật: Thời gian xử lý nhanh, phân cụm rõ ràng: Phân thành 8 nhóm khách hàng, phù hợp cho các chương trình khuyến mãi, các chiến lược kinh doanh có tính cá nhân hóa cao
     - 🎯 1. Marketing cá nhân hóa (Personalized Marketing)
     - 🛍 2. Đề xuất sản phẩm phù hợp hơn (Product Recommendation)
     - 🤝 3. Chăm sóc khách hàng tốt hơn
     - 💸 4. Tối ưu chi phí và nguồn lực
     """)
+
     st.image("RFM_Segments.png")
     st.markdown("""
-    ** 2. Phân cụm bằng thuật toán K-Means bằng Python truyền thống: Thời gian xử lý nhanh, phân cụm rõ ràng: Phân thành 4 nhóm khách hàng, chiến lược kinh doanh sẽ mang tính tổng thể, dễ triển khai và quản lý hơn so với phân cụm chi tiết.
+    **Phân cụm bằng thuật toán K-Means bằng Python truyền thống: Thời gian xử lý nhanh, phân cụm rõ ràng: Phân thành 4 nhóm khách hàng, chiến lược kinh doanh sẽ mang tính tổng thể, dễ triển khai và quản lý hơn so với phân cụm chi tiết.
     - Tránh tình trạng overfitting
     - Ra quyết định nhanh, đơn giản
     """)
@@ -101,13 +105,37 @@ elif page == "KMeans Model":
     # Open and read file to cosine_sim_new
     with open('kmeans_model.pkl', 'rb') as f:
         kmeans_model = pickle.load(f)
-
+    
     # Giao diện nhập liệu
     st.title("Phân nhóm khách hàng bằng RFM")
-
+    st.subheader("Hãy nhập thông tin khách hàng:")
     r = st.number_input("Recency (R)", min_value=0.0, step=1.0)
     f = st.number_input("Frequency (F)", min_value=0.0, step=1.0)
     m = st.number_input("Monetary (M)", min_value=0.0, step=1.0)
+
+    def image_rule(result):
+        if result == 0:
+            return st.image("new_kmeans.png")
+        elif result == 1:
+            return st.image("inactive_kmeans.png")
+        elif result == 2:
+            return st.image("churn_kmeans.png")
+        elif result == 3:
+            return st.image("regular_kmeans.png")
+        elif result == 4:
+            return st.image("vip_kmeans.png")
+        
+    def type_customer(result):
+        if result == 0:
+            return "NEW"
+        elif result == 1:
+            return "INACTIVE"
+        elif result == 2:
+            return "CHURN"
+        elif result == 3:
+            return "REGULAR"
+        elif result == 4:
+            return "VIPS"
 
     if st.button("Dự đoán nhóm"):
         # Tạo array RFM
@@ -116,7 +144,31 @@ elif page == "KMeans Model":
         # Dự đoán nhóm
         cluster = kmeans_model.predict(user_rfm)
         
-        st.success(f"Khách hàng này thuộc nhóm: {cluster[0]}")
+        st.success(f"Khách hàng này thuộc nhóm: {type_customer(cluster[0])}")
+        image_rule(cluster[0])
+    
+    st.subheader("Hãy chọn file csv có thông tin RFM của khách hàng:")
+    uploaded_file = st.file_uploader("Tải file CSV lên", type=["csv"])
+
+    if uploaded_file is not None:
+    # Đọc file CSV
+        df = pd.read_csv(uploaded_file)
+
+        for i in range(0, len(df)):
+            user_rfm = np.array([[df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3]]])
+            cluster_file = kmeans_model.predict(user_rfm)
+            st.success(f"Khách hàng {df.iloc[i, 0]} này thuộc nhóm: {type_customer(cluster_file[0])}")
+            df.iloc[i,4] = type_customer(cluster_file[0])
+            image_rule(cluster_file[0])
+
+        st.download_button(
+        label="📥 Tải file CSV",
+        data=df.to_csv(index=False),
+        file_name="du_lieu.csv",
+        mime="text/csv"
+        )
+
+
 
 elif page == "Manual Rule Based":
     st.image("Grocieries.jpg")
@@ -124,9 +176,27 @@ elif page == "Manual Rule Based":
     with open('manual_rule_based.pkl', 'rb') as f:
         manual_rule_based = pickle.load(f)
 
+    def image_rule(result):
+        if result == 'VIPS':
+            return st.image("vips_rule_based.png")
+        elif result == 'REGULARS':
+            return st.image("regular_rule_based.png")
+        elif result == 'NEW':
+            return st.image("new_rule_based.png")
+        elif result == 'LOYAL':
+            return st.image("loyalty_rule_based.png")
+        elif result == 'INACTIVE':
+            return st.image("inactive_rule_based.png")
+        elif result == 'DORMANT':
+            return st.image("dormat_rule_based.png")
+        elif result == 'CHURN':
+            return st.image("churn_rule_based.png")
+        else:
+            return st.image("active_rule_based.png")
+        
     # Giao diện nhập liệu
     st.title("Phân nhóm khách hàng bằng RFM")
-
+    st.subheader("Hãy nhập thông tin khách hàng:")
     r = st.number_input("Recency (R)", min_value=0.0, step=1.0)
     f = st.number_input("Frequency (F)", min_value=0.0, step=1.0)
     m = st.number_input("Monetary (M)", min_value=0.0, step=1.0)
@@ -176,3 +246,4 @@ elif page == "Manual Rule Based":
                 return 'REGULARS'
         
         st.success(f"Khách hàng này thuộc nhóm: {a()}")
+        image_rule(a())
